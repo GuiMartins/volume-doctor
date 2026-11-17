@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>volume-doctor</title>
+<link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><img src="/static/icon.svg" alt=""><span>volume-doctor</span></div>
+  <div id="job" class="job" hidden>
+    <div class="job-text"><b id="job-phase"></b> <span id="job-count"></span> <span id="job-msg" class="muted"></span></div>
+    <div class="bar"><div id="job-bar"></div></div>
+    <button id="btn-cancel" class="btn small ghost">Cancelar</button>
+  </div>
+  <div class="top-actions">
+    <span id="last-scan" class="muted small"></span>
+    <button id="btn-scan" class="btn">Escanear biblioteca</button>
+    <button id="btn-rescan" class="btn ghost" title="Mede tudo de novo, mesmo o que não mudou">Re-medir tudo</button>
+  </div>
+</header>
+
+<main>
+  <div id="toast" class="toast" hidden></div>
+
+  <section id="empty" class="card empty" hidden>
+    <h2>Nenhuma faixa ainda</h2>
+    <p>O scan mede a loudness de cada arquivo em <code id="music-dir"></code>. Na primeira vez demora (uns 40 min para 3 mil faixas); depois só mede o que for novo ou alterado.</p>
+    <button class="btn" onclick="startScan(false)">Escanear agora</button>
+  </section>
+
+  <div id="content" hidden>
+    <section class="stats" id="stats"></section>
+
+    <section class="grid2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Distribuição de loudness</h3>
+          <div class="legend"><span class="sw before"></span>hoje <span class="sw after"></span>depois da correção <span class="sw target"></span>alvo</div>
+        </div>
+        <canvas id="hist" height="260"></canvas>
+        <p class="muted small">Cada barra = 1 LU. Clique numa barra para filtrar a tabela. Quanto mais estreito o pico azul, mais parelha a biblioteca.</p>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Loudness × pico</h3>
+          <div class="legend"><span class="dot down"></span>desce <span class="dot up"></span>sobe <span class="dot lim"></span>sem folga p/ subir <span class="dot ok"></span>já no alvo</div>
+        </div>
+        <canvas id="scatter" height="260"></canvas>
+        <p class="muted small">Faixas perto do teto (0 dBFS) não sobem sem distorcer. Clique num ponto para ouvir.</p>
+      </div>
+    </section>
+
+    <section class="card correction">
+      <div class="corr-controls">
+        <div>
+          <label class="lbl" for="target">Alvo de loudness</label>
+          <div class="target-row">
+            <input type="range" id="target-range" min="-23" max="-8" step="0.5">
+            <input type="number" id="target" min="-30" max="-5" step="0.5"> <span>LUFS</span>
+          </div>
+          <div class="presets">
+            <button class="chip" data-t="-18">−18 ReplayGain padrão</button>
+            <button class="chip" data-t="-16">−16 Apple Music</button>
+            <button class="chip" data-t="-14">−14 Spotify / YouTube</button>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="clip"> <span>Não subir além do pico<br><small class="muted">evita distorção: faixa sem folga fica como está</small></span></label>
+        <div class="corr-buttons">
+          <button id="btn-save" class="btn ghost" disabled>Salvar alvo</button>
+          <button id="btn-apply" class="btn primary">Aplicar</button>
+          <button id="btn-revert" class="btn ghost danger">Reverter tudo</button>
+        </div>
+      </div>
+      <p id="corr-summary" class="corr-summary"></p>
+    </section>
+
+    <section class="card">
+      <div class="table-tools">
+        <input type="search" id="q" placeholder="Buscar artista, faixa, álbum, pasta…">
+        <select id="filter">
+          <option value="all">Todas</option>
+          <option value="pending">A corrigir</option>
+          <option value="up">Vão subir</option>
+          <option value="down">Vão descer</option>
+          <option value="limited">Sem folga p/ subir</option>
+          <option value="offset">Com ajuste manual</option>
+          <option value="written">Gravadas pelo app</option>
+          <option value="error">Com erro</option>
+          <option value="unmeasured">Não medidas</option>
+        </select>
+        <span id="range-chip" class="chip active" hidden></span>
+        <span id="count" class="muted small"></span>
+      </div>
+      <div id="bulk" class="bulk" hidden>
+        <b id="bulk-n"></b>
+        <button class="btn small ghost" data-rel="-1">−1 dB</button>
+        <button class="btn small ghost" data-rel="1">+1 dB</button>
+        <button class="btn small ghost" id="bulk-zero">Zerar ajuste</button>
+        <button class="btn small" id="bulk-apply">Aplicar nelas</button>
+        <button class="btn small ghost danger" id="bulk-revert">Reverter nelas</button>
+        <button class="btn small ghost" id="bulk-clear">Limpar seleção</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th class="c-check"><input type="checkbox" id="check-page" title="Selecionar a página"></th>
+            <th class="c-play"></th>
+            <th data-sort="title">Faixa</th>
+            <th data-sort="lufs" class="num">LUFS</th>
+            <th data-sort="peak_db" class="num">Pico</th>
+            <th data-sort="gain" class="num">Ganho</th>
+            <th data-sort="offset_db" class="num">Ajuste manual</th>
+            <th data-sort="file_tg" class="num">Tag no arquivo</th>
+            <th data-sort="status">Status</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <a href="#" id="select-filter" class="small">Selecionar todas do filtro</a>
+        <span class="spacer"></span>
+        <button class="btn small ghost" id="prev">‹</button>
+        <span id="page" class="small"></span>
+        <button class="btn small ghost" id="next">›</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="player" class="player" hidden>
+  <button id="pl-prev" class="icon" title="Anterior">⏮</button>
+  <button id="pl-play" class="icon big" title="Tocar/pausar">▶</button>
+  <button id="pl-next" class="icon" title="Próxima">⏭</button>
+  <div class="pl-info"><b id="pl-title"></b><span id="pl-sub" class="muted"></span></div>
+  <input type="range" id="pl-seek" min="0" max="1000" value="0">
+  <span id="pl-time" class="small muted"></span>
+  <div class="ab">
+    <button id="ab-fix" class="seg active">Corrigido <span id="pl-gain"></span></button>
+    <button id="ab-orig" class="seg">Original</button>
+  </div>
+  <button id="pl-close" class="icon" title="Fechar">✕</button>
+  <audio id="audio" preload="auto"></audio>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

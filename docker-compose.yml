@@ -1,0 +1,8 @@
+# Para rodar fora do CasaOS. No zima, use Apps/volume-doctor/docker-compose.yml.
+services:
+  volume-doctor:
+    build: .
+    ports: ["8992:8992"]
+    volumes:
+      - ./data:/data
+      - /caminho/da/musica:/music

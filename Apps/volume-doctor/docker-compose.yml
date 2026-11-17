@@ -1,0 +1,55 @@
+name: volume-doctor
+services:
+  volume-doctor:
+    image: ghcr.io/guimartins/volume-doctor:latest
+    container_name: volume-doctor
+    restart: unless-stopped
+    labels:
+      icon: https://raw.githubusercontent.com/GuiMartins/volume-doctor/main/Apps/volume-doctor/icon.svg
+    ports:
+      - target: 8992
+        published: "8992"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /DATA/AppData/volume-doctor/data
+        target: /data
+      - type: bind
+        source: /media/12tb/Music
+        target: /music
+    environment:
+      DATA_DIR: /data
+      MUSIC_DIR: /music
+      WORKERS: "3"
+      TZ: America/Sao_Paulo
+      # Opcional, dispara o scan do Navidrome depois de gravar tags:
+      # ND_URL: http://192.168.31.172:4533
+      # ND_USER: admin
+      # ND_PASS: changeme
+    networks:
+      - default
+networks:
+  default:
+    name: volume-doctor_default
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: volume-doctor
+  index: /
+  port_map: "8992"
+  webui_port: 8992
+  scheme: http
+  is_uncontrolled: false
+  author: GuiMartins
+  developer: GuiMartins
+  category: Utilities
+  icon: https://raw.githubusercontent.com/GuiMartins/volume-doctor/main/Apps/volume-doctor/icon.svg
+  title:
+    en_us: volume-doctor
+  tagline:
+    en_us: Even out loudness across your music library with ReplayGain
+    pt_br: Iguala o volume da biblioteca de música com ReplayGain
+  description:
+    en_us: Measures EBU R128 loudness of every track, shows the spread, and writes ReplayGain tags that Navidrome and Symfonium use.
+    pt_br: Mede a loudness (EBU R128) de cada faixa, mostra a variação e grava tags ReplayGain que o Navidrome e o Symfonium usam.

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "volume-doctor",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["DATA_DIR=./data", "MUSIC_DIR=./testmusic", ".venv/bin/uvicorn", "volume_doctor.webapp:app", "--port", "8992"],
+      "port": 8992
+    }
+  ]
+}
