@@ -74,11 +74,16 @@ def start(kind, fn, *args):
 
 # ---------------------------------------------------------------- scan
 
+def _hidden(name):
+    # ".Trash", "._foo.mp3" são ocultos; "...And Justice For All" não
+    return name.startswith(".") and not name.startswith("..")
+
+
 def _walk():
     for root, dirs, files in os.walk(db.MUSIC_DIR):
-        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        dirs[:] = [d for d in dirs if not _hidden(d)]
         for name in files:
-            if name.startswith(".") or os.path.splitext(name)[1].lower() not in EXTS:
+            if _hidden(name) or os.path.splitext(name)[1].lower() not in EXTS:
                 continue
             full = os.path.join(root, name)
             try:
