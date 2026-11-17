@@ -269,7 +269,17 @@ $("scatter").addEventListener("mousemove", (e) => {
 });
 $("scatter").addEventListener("mouseleave", (e) => showTip(e, null));
 $("scatter").addEventListener("click", (e) => { const t = $("scatter")._hit(e); if (t) play(t.id); });
-let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { drawHist(); drawScatter(); }, 150); });
+// redesenha quando o canvas ganha/muda de largura (1a exibição, barra de rolagem, janela)
+const lastW = new Map();
+const ro = new ResizeObserver((entries) => {
+  for (const e of entries) {
+    const w = Math.round(e.contentRect.width);
+    if (!w || lastW.get(e.target) === w || !S.tracks.length) continue;
+    lastW.set(e.target, w);
+    e.target.id === "hist" ? drawHist() : drawScatter();
+  }
+});
+ro.observe($("hist")); ro.observe($("scatter"));
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawHist(); drawScatter(); });
 
 // ---------------------------------------------------------------- tabela
